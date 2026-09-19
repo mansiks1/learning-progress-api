@@ -10,6 +10,26 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class CourseControllerTest extends WebTestCase
 {
+    public function testShowMissingCourseReturnsNotFound(): void
+    {
+        $client = static::createClient();
+
+        $client->request('GET', '/api/courses/2147483647');
+
+        self::assertResponseStatusCodeSame(404);
+        self::assertResponseFormatSame('json');
+
+        $data = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+
+        self::assertSame([
+            'error' => 'Course not found',
+        ], $data);
+    }
+
     public function testShowCourse(): void
     {
         $client = static::createClient();
