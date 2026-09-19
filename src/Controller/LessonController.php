@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Dto\CreateLessonInput;
 use App\Entity\Lesson;
 use App\Repository\CourseRepository;
 use App\Repository\LessonRepository;
@@ -11,6 +12,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Attribute\AsController;
+use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -24,10 +26,9 @@ final class LessonController
     )]
     public function create(
         int $courseId,
-        Request $request,
+        #[MapRequestPayload] CreateLessonInput $input,
         CourseRepository $courseRepository,
         EntityManagerInterface $entityManager,
-        ValidatorInterface $validator,
     ): JsonResponse {
         $course = $courseRepository->find($courseId);
 
@@ -38,44 +39,10 @@ final class LessonController
             );
         }
 
-        $data = $request->toArray();
-
-        $title = $data['title'] ?? null;
-        $position = $data['position'] ?? null;
-
-        if (!is_string($title)) {
-            return new JsonResponse(
-                ['errors' => ['Title must be a string']],
-                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        if (!is_int($position)) {
-            return new JsonResponse(
-                ['errors' => ['Position must be an integer']],
-                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
         $lesson = new Lesson();
-        $lesson->setTitle(trim($title));
-        $lesson->setPosition($position);
+        $lesson->setTitle(trim($input->title));
+        $lesson->setPosition($input->position);
         $lesson->setCourse($course);
-
-        $violations = $validator->validate($lesson);
-
-        if (count($violations) > 0) {
-            $errors = [];
-
-            foreach ($violations as $violation) {
-                $errors[] = $violation->getMessage();
-            }
-
-            return new JsonResponse(
-                ['errors' => $errors],
-                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
 
         $entityManager->persist($lesson);
         $entityManager->flush();

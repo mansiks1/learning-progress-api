@@ -83,9 +83,12 @@ final class LessonControllerTest extends WebTestCase
             ]);
 
             self::assertResponseStatusCodeSame(422);
+            $data = $this->decodeJson($client->getResponse()->getContent());
+
+            self::assertSame('position', $data['violations'][0]['propertyPath']);
             self::assertSame(
-                ['errors' => ['Position must be greater than zero']],
-                $this->decodeJson($client->getResponse()->getContent()),
+                'Position must be greater than zero',
+                $data['violations'][0]['title'],
             );
         } finally {
             $this->deleteCourse($courseId);
