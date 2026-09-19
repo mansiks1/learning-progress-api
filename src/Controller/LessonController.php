@@ -142,7 +142,6 @@ final class LessonController
         );
     }
 
-
     #[Route(
         '/api/lessons/{id}',
         name: 'api_lesson_update',
@@ -217,6 +216,33 @@ final class LessonController
         return new JsonResponse(
             $this->lessonToArray($lesson),
         );
+    }
+
+    #[Route(
+        '/api/lessons/{id}',
+        name: 'api_lesson_delete',
+        methods: ['DELETE'],
+    )]
+    public function delete(
+        int $id,
+        LessonRepository $lessonRepository,
+        EntityManagerInterface $entityManager,
+    ): JsonResponse {
+        $lesson = $lessonRepository->find($id);
+
+        if ($lesson === null) {
+            return new JsonResponse(
+                ['error' => 'Lesson not found'],
+                JsonResponse::HTTP_NOT_FOUND,
+            );
+        }
+
+        $entityManager->remove($lesson);
+        $entityManager->flush();
+
+        return new JsonResponse([
+            'message' => 'Lesson deleted',
+        ]);
     }
 
     private function lessonToArray(Lesson $lesson): array
