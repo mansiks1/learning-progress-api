@@ -41,3 +41,14 @@ API будет доступен по адресу `http://127.0.0.1:8000`.
   "title": "Symfony Basics"
 }
 ```
+
+## Тесты
+
+Тесты используют отдельную базу `app_test`:
+
+```powershell
+docker compose up -d
+php bin/console doctrine:database:create --env=test --if-not-exists
+php bin/console doctrine:migrations:migrate --env=test --no-interaction
+php vendor/bin/phpunit --testdox
+```
