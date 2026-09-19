@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Entity\Lesson;
 use App\Repository\CourseRepository;
+use App\Repository\LessonRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -88,5 +89,42 @@ final class LessonController
             ],
             JsonResponse::HTTP_CREATED,
         );
+    }
+    #[Route(
+        '/api/courses/{courseId}/lessons',
+        name: 'api_lesson_index',
+        methods: ['GET'],
+    )]
+    public function index(
+        int $courseId,
+        CourseRepository $courseRepository,
+        LessonRepository $lessonRepository,
+    ): JsonResponse {
+        $course = $courseRepository->find($courseId);
+
+        if ($course === null) {
+            return new JsonResponse(
+                ['error' => 'Course not found'],
+                JsonResponse::HTTP_NOT_FOUND,
+            );
+        }
+
+        $lessons = $lessonRepository->findBy(
+            ['course' => $course],
+            ['position' => 'ASC'],
+        );
+
+        $result = [];
+
+        foreach ($lessons as $lesson) {
+            $result[] = [
+                'id' => $lesson->getId(),
+                'title' => $lesson->getTitle(),
+                'position' => $lesson->getPosition(),
+                'courseId' => $course->getId(),
+            ];
+        }
+
+        return new JsonResponse($result);
     }
 }
