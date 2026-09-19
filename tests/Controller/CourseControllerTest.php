@@ -10,6 +10,27 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class CourseControllerTest extends WebTestCase
 {
+    public function testRejectsBlankTitle(): void
+    {
+        $client = static::createClient();
+
+        $client->jsonRequest('POST', '/api/courses', [
+            'title' => '   ',
+        ]);
+
+        self::assertResponseStatusCodeSame(422);
+
+        $data = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+
+        self::assertSame([
+            'errors' => ['Title is required'],
+        ], $data);
+    }
+
     public function testCreateCourse(): void
     {
         $client = static::createClient();
