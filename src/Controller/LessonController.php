@@ -142,6 +142,83 @@ final class LessonController
         );
     }
 
+
+    #[Route(
+        '/api/lessons/{id}',
+        name: 'api_lesson_update',
+        methods: ['PATCH'],
+    )]
+    public function update(
+        int $id,
+        Request $request,
+        LessonRepository $lessonRepository,
+        EntityManagerInterface $entityManager,
+        ValidatorInterface $validator,
+    ): JsonResponse {
+        $lesson = $lessonRepository->find($id);
+
+        if ($lesson === null) {
+            return new JsonResponse(
+                ['error' => 'Lesson not found'],
+                JsonResponse::HTTP_NOT_FOUND,
+            );
+        }
+
+        $data = $request->toArray();
+
+        if (!array_key_exists('title', $data)
+            && !array_key_exists('position', $data)
+        ) {
+            return new JsonResponse(
+                ['errors' => ['At least one field is required']],
+                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        if (array_key_exists('title', $data)) {
+            if (!is_string($data['title'])) {
+                return new JsonResponse(
+                    ['errors' => ['Title must be a string']],
+                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
+                );
+            }
+
+            $lesson->setTitle(trim($data['title']));
+        }
+
+        if (array_key_exists('position', $data)) {
+            if (!is_int($data['position'])) {
+                return new JsonResponse(
+                    ['errors' => ['Position must be an integer']],
+                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
+                );
+            }
+
+            $lesson->setPosition($data['position']);
+        }
+
+        $violations = $validator->validate($lesson);
+
+        if (count($violations) > 0) {
+            $errors = [];
+
+            foreach ($violations as $violation) {
+                $errors[] = $violation->getMessage();
+            }
+
+            return new JsonResponse(
+                ['errors' => $errors],
+                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        $entityManager->flush();
+
+        return new JsonResponse(
+            $this->lessonToArray($lesson),
+        );
+    }
+
     private function lessonToArray(Lesson $lesson): array
     {
         return [
