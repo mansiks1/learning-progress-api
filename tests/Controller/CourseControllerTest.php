@@ -10,6 +10,39 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class CourseControllerTest extends WebTestCase
 {
+    public function testShowCourse(): void
+    {
+        $client = static::createClient();
+        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
+
+        $course = new Course();
+        $course->setTitle('Course for GET test');
+
+        $entityManager->persist($course);
+        $entityManager->flush();
+
+        $courseId = $course->getId();
+
+        $client->request('GET', '/api/courses/'.$courseId);
+
+        self::assertResponseIsSuccessful();
+        self::assertResponseFormatSame('json');
+
+        $data = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+
+        self::assertSame([
+            'id' => $courseId,
+            'title' => 'Course for GET test',
+        ], $data);
+
+        $entityManager->remove($course);
+        $entityManager->flush();
+    }
+
     public function testRejectsBlankTitle(): void
     {
         $client = static::createClient();
