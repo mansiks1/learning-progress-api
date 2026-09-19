@@ -81,15 +81,11 @@ final class LessonController
         $entityManager->flush();
 
         return new JsonResponse(
-            [
-                'id' => $lesson->getId(),
-                'title' => $lesson->getTitle(),
-                'position' => $lesson->getPosition(),
-                'courseId' => $course->getId(),
-            ],
+            $this->lessonToArray($lesson),
             JsonResponse::HTTP_CREATED,
         );
     }
+
     #[Route(
         '/api/courses/{courseId}/lessons',
         name: 'api_lesson_index',
@@ -117,14 +113,42 @@ final class LessonController
         $result = [];
 
         foreach ($lessons as $lesson) {
-            $result[] = [
-                'id' => $lesson->getId(),
-                'title' => $lesson->getTitle(),
-                'position' => $lesson->getPosition(),
-                'courseId' => $course->getId(),
-            ];
+            $result[] = $this->lessonToArray($lesson);
         }
 
         return new JsonResponse($result);
+    }
+
+    #[Route(
+        '/api/lessons/{id}',
+        name: 'api_lesson_show',
+        methods: ['GET'],
+    )]
+    public function show(
+        int $id,
+        LessonRepository $lessonRepository,
+    ): JsonResponse {
+        $lesson = $lessonRepository->find($id);
+
+        if ($lesson === null) {
+            return new JsonResponse(
+                ['error' => 'Lesson not found'],
+                JsonResponse::HTTP_NOT_FOUND,
+            );
+        }
+
+        return new JsonResponse(
+            $this->lessonToArray($lesson),
+        );
+    }
+
+    private function lessonToArray(Lesson $lesson): array
+    {
+        return [
+            'id' => $lesson->getId(),
+            'title' => $lesson->getTitle(),
+            'position' => $lesson->getPosition(),
+            'courseId' => $lesson->getCourse()?->getId(),
+        ];
     }
 }
