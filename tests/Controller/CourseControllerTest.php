@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Controller;
 
 use App\Entity\Course;
+use App\Entity\Lesson;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
@@ -49,8 +50,9 @@ final class CourseControllerTest extends WebTestCase
         $course->setTitle('Title before update');
         $entityManager->persist($course);
         $entityManager->flush();
+        $courseId = $course->getId();
 
-        $client->jsonRequest('PATCH', '/api/courses/'.$course->getId(), [
+        $client->jsonRequest('PATCH', '/api/courses/'.$courseId, [
             'title' => 'Title after update',
         ]);
 
@@ -63,9 +65,30 @@ final class CourseControllerTest extends WebTestCase
         );
 
         self::assertSame([
-            'id' => $course->getId(),
+            'id' => $courseId,
             'title' => 'Title after update',
         ], $data);
+        self::assertSame('Title after update', $course->getTitle());
+
+        $client->jsonRequest('PATCH', '/api/courses/'.$courseId, [
+            'title' => '   ',
+        ]);
+
+        self::assertResponseStatusCodeSame(422);
+        $invalidUpdate = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+        self::assertSame('title', $invalidUpdate['violations'][0]['propertyPath']);
+        self::assertSame(
+            'Title is required',
+            $invalidUpdate['violations'][0]['title'],
+        );
+
+        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
+        $course = $entityManager->find(Course::class, $courseId);
+        self::assertInstanceOf(Course::class, $course);
         self::assertSame('Title after update', $course->getTitle());
 
         $entityManager->remove($course);
@@ -98,6 +121,40 @@ final class CourseControllerTest extends WebTestCase
             'message' => 'Course deleted',
         ], $data);
         self::assertNull($entityManager->find(Course::class, $courseId));
+    }
+
+    public function testCannotDeleteCourseWithLessons(): void
+    {
+        $client = static::createClient();
+        $entityManager = static::getContainer()->get(EntityManagerInterface::class);
+
+        $course = new Course();
+        $course->setTitle('Course with lesson');
+
+        $lesson = new Lesson();
+        $lesson->setTitle('Protected lesson');
+        $lesson->setPosition(1);
+        $course->addLesson($lesson);
+
+        $entityManager->persist($course);
+        $entityManager->persist($lesson);
+        $entityManager->flush();
+
+        $client->request('DELETE', '/api/courses/'.$course->getId());
+
+        self::assertResponseStatusCodeSame(409);
+        $data = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+        self::assertSame([
+            'error' => 'Course with lessons cannot be deleted',
+        ], $data);
+
+        $entityManager->remove($lesson);
+        $entityManager->remove($course);
+        $entityManager->flush();
     }
 
     public function testShowMissingCourseReturnsNotFound(): void
@@ -169,9 +226,11 @@ final class CourseControllerTest extends WebTestCase
             flags: JSON_THROW_ON_ERROR,
         );
 
-        self::assertSame([
-            'errors' => ['Title is required'],
-        ], $data);
+        self::assertSame('title', $data['violations'][0]['propertyPath']);
+        self::assertSame(
+            'Title is required',
+            $data['violations'][0]['title'],
+        );
     }
 
     public function testCreateCourse(): void
