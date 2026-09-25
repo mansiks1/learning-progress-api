@@ -3,6 +3,8 @@
 declare(strict_types=1);
 namespace App\Controller;
 
+use App\Dto\CreateCourseInput;
+use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -33,38 +35,11 @@ final class CourseController
     //добавление нового курса
     #[Route('/api/courses', name: 'api_course_create', methods: ['POST'])]
     public function create(
-        Request $request,
+        #[MapRequestPayload] CreateCourseInput $input,
         EntityManagerInterface $entityManager,
-        ValidatorInterface $validator,
     ): JsonResponse {
-        $data = $request->toArray(); // превращаем json в массив
-
-        $title = $data['title'] ?? null;
-
-        if (!is_string($title)) {
-            return new JsonResponse(
-                ['errors' => ['Title must be a string']],
-                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
         $course = new Course();
-        $course->setTitle(trim($title));
-
-        $violations = $validator->validate($course);
-
-        if (count($violations) > 0) {
-            $errors = [];
-
-            foreach ($violations as $violation) {
-                $errors[] = $violation->getMessage();
-            }
-
-            return new JsonResponse(
-                ['errors' => $errors],
-                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
+        $course->setTitle(trim($input->title));
 
         $entityManager->persist($course);
         $entityManager->flush();

@@ -169,9 +169,11 @@ final class CourseControllerTest extends WebTestCase
             flags: JSON_THROW_ON_ERROR,
         );
 
-        self::assertSame([
-            'errors' => ['Title is required'],
-        ], $data);
+        self::assertSame('title', $data['violations'][0]['propertyPath']);
+        self::assertSame(
+            'Title is required',
+            $data['violations'][0]['title'],
+        );
     }
 
     public function testCreateCourse(): void
