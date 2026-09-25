@@ -53,6 +53,24 @@ final class LessonControllerTest extends WebTestCase
                 $this->decodeJson($client->getResponse()->getContent())['title'],
             );
 
+            $client->jsonRequest('PATCH', "/api/lessons/$firstLessonId", []);
+            self::assertResponseStatusCodeSame(422);
+            $emptyUpdate = $this->decodeJson($client->getResponse()->getContent());
+            self::assertSame(
+                'At least one field is required',
+                $emptyUpdate['violations'][0]['title'],
+            );
+
+            $client->jsonRequest('PATCH', "/api/lessons/$firstLessonId", [
+                'position' => 0,
+            ]);
+            self::assertResponseStatusCodeSame(422);
+            $invalidPosition = $this->decodeJson($client->getResponse()->getContent());
+            self::assertSame(
+                'Position must be greater than zero',
+                $invalidPosition['violations'][0]['title'],
+            );
+
             $client->request('DELETE', "/api/lessons/$firstLessonId");
             self::assertResponseIsSuccessful();
             self::assertSame(

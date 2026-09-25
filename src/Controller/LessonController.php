@@ -5,17 +5,16 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Dto\CreateLessonInput;
+use App\Dto\UpdateLessonInput;
 use App\Entity\Lesson;
 use App\Repository\CourseRepository;
 use App\Repository\LessonRepository;
 use App\Service\LessonService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[AsController]
 final class LessonController
@@ -111,10 +110,9 @@ final class LessonController
     )]
     public function update(
         int $id,
-        Request $request,
+        #[MapRequestPayload] UpdateLessonInput $input,
         LessonRepository $lessonRepository,
-        EntityManagerInterface $entityManager,
-        ValidatorInterface $validator,
+        LessonService $lessonService,
     ): JsonResponse {
         $lesson = $lessonRepository->find($id);
 
@@ -125,55 +123,7 @@ final class LessonController
             );
         }
 
-        $data = $request->toArray();
-
-        if (!array_key_exists('title', $data)
-            && !array_key_exists('position', $data)
-        ) {
-            return new JsonResponse(
-                ['errors' => ['At least one field is required']],
-                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        if (array_key_exists('title', $data)) {
-            if (!is_string($data['title'])) {
-                return new JsonResponse(
-                    ['errors' => ['Title must be a string']],
-                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-                );
-            }
-
-            $lesson->setTitle(trim($data['title']));
-        }
-
-        if (array_key_exists('position', $data)) {
-            if (!is_int($data['position'])) {
-                return new JsonResponse(
-                    ['errors' => ['Position must be an integer']],
-                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-                );
-            }
-
-            $lesson->setPosition($data['position']);
-        }
-
-        $violations = $validator->validate($lesson);
-
-        if (count($violations) > 0) {
-            $errors = [];
-
-            foreach ($violations as $violation) {
-                $errors[] = $violation->getMessage();
-            }
-
-            return new JsonResponse(
-                ['errors' => $errors],
-                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        $entityManager->flush();
+        $lesson = $lessonService->update($lesson, $input);
 
         return new JsonResponse(
             $this->lessonToArray($lesson),
