@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Dto\CreateLessonInput;
+use App\Dto\UpdateLessonInput;
 use App\Entity\Lesson;
 use App\Repository\CourseRepository;
 use App\Repository\LessonRepository;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Service\LessonService;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Attribute\AsController;
+use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[AsController]
 final class LessonController
@@ -24,10 +25,9 @@ final class LessonController
     )]
     public function create(
         int $courseId,
-        Request $request,
+        #[MapRequestPayload] CreateLessonInput $input,
         CourseRepository $courseRepository,
-        EntityManagerInterface $entityManager,
-        ValidatorInterface $validator,
+        LessonService $lessonService,
     ): JsonResponse {
         $course = $courseRepository->find($courseId);
 
@@ -38,47 +38,7 @@ final class LessonController
             );
         }
 
-        $data = $request->toArray();
-
-        $title = $data['title'] ?? null;
-        $position = $data['position'] ?? null;
-
-        if (!is_string($title)) {
-            return new JsonResponse(
-                ['errors' => ['Title must be a string']],
-                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        if (!is_int($position)) {
-            return new JsonResponse(
-                ['errors' => ['Position must be an integer']],
-                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        $lesson = new Lesson();
-        $lesson->setTitle(trim($title));
-        $lesson->setPosition($position);
-        $lesson->setCourse($course);
-
-        $violations = $validator->validate($lesson);
-
-        if (count($violations) > 0) {
-            $errors = [];
-
-            foreach ($violations as $violation) {
-                $errors[] = $violation->getMessage();
-            }
-
-            return new JsonResponse(
-                ['errors' => $errors],
-                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        $entityManager->persist($lesson);
-        $entityManager->flush();
+        $lesson = $lessonService->create($course, $input);
 
         return new JsonResponse(
             $this->lessonToArray($lesson),
@@ -149,10 +109,9 @@ final class LessonController
     )]
     public function update(
         int $id,
-        Request $request,
+        #[MapRequestPayload] UpdateLessonInput $input,
         LessonRepository $lessonRepository,
-        EntityManagerInterface $entityManager,
-        ValidatorInterface $validator,
+        LessonService $lessonService,
     ): JsonResponse {
         $lesson = $lessonRepository->find($id);
 
@@ -163,55 +122,7 @@ final class LessonController
             );
         }
 
-        $data = $request->toArray();
-
-        if (!array_key_exists('title', $data)
-            && !array_key_exists('position', $data)
-        ) {
-            return new JsonResponse(
-                ['errors' => ['At least one field is required']],
-                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        if (array_key_exists('title', $data)) {
-            if (!is_string($data['title'])) {
-                return new JsonResponse(
-                    ['errors' => ['Title must be a string']],
-                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-                );
-            }
-
-            $lesson->setTitle(trim($data['title']));
-        }
-
-        if (array_key_exists('position', $data)) {
-            if (!is_int($data['position'])) {
-                return new JsonResponse(
-                    ['errors' => ['Position must be an integer']],
-                    JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-                );
-            }
-
-            $lesson->setPosition($data['position']);
-        }
-
-        $violations = $validator->validate($lesson);
-
-        if (count($violations) > 0) {
-            $errors = [];
-
-            foreach ($violations as $violation) {
-                $errors[] = $violation->getMessage();
-            }
-
-            return new JsonResponse(
-                ['errors' => $errors],
-                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        $entityManager->flush();
+        $lesson = $lessonService->update($lesson, $input);
 
         return new JsonResponse(
             $this->lessonToArray($lesson),
@@ -226,7 +137,7 @@ final class LessonController
     public function delete(
         int $id,
         LessonRepository $lessonRepository,
-        EntityManagerInterface $entityManager,
+        LessonService $lessonService,
     ): JsonResponse {
         $lesson = $lessonRepository->find($id);
 
@@ -237,8 +148,7 @@ final class LessonController
             );
         }
 
-        $entityManager->remove($lesson);
-        $entityManager->flush();
+        $lessonService->delete($lesson);
 
         return new JsonResponse([
             'message' => 'Lesson deleted',
