@@ -8,6 +8,7 @@ use App\Dto\CreateLessonInput;
 use App\Entity\Lesson;
 use App\Repository\CourseRepository;
 use App\Repository\LessonRepository;
+use App\Service\LessonService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -28,7 +29,7 @@ final class LessonController
         int $courseId,
         #[MapRequestPayload] CreateLessonInput $input,
         CourseRepository $courseRepository,
-        EntityManagerInterface $entityManager,
+        LessonService $lessonService,
     ): JsonResponse {
         $course = $courseRepository->find($courseId);
 
@@ -39,13 +40,7 @@ final class LessonController
             );
         }
 
-        $lesson = new Lesson();
-        $lesson->setTitle(trim($input->title));
-        $lesson->setPosition($input->position);
-        $lesson->setCourse($course);
-
-        $entityManager->persist($lesson);
-        $entityManager->flush();
+        $lesson = $lessonService->create($course, $input);
 
         return new JsonResponse(
             $this->lessonToArray($lesson),
