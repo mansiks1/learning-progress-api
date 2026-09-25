@@ -1,19 +1,18 @@
 <?php
 
 declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Dto\CreateCourseInput;
-use App\Service\CourseService;
-use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\HttpKernel\Attribute\AsController;
+use App\Dto\UpdateCourseInput;
 use App\Entity\Course;
-use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\CourseRepository;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
+use App\Service\CourseService;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpKernel\Attribute\AsController;
+use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
+use Symfony\Component\Routing\Attribute\Route;
 
 #[AsController]
 final class CourseController
@@ -51,7 +50,7 @@ final class CourseController
     public function delete(
         int $id,
         CourseRepository $courseRepository,
-        EntityManagerInterface $entityManager,
+        CourseService $courseService,
     ): JsonResponse {
         $course = $courseRepository->find($id);
 
@@ -62,8 +61,12 @@ final class CourseController
             );
         }
 
-        $entityManager->remove($course);
-        $entityManager->flush();
+        if (!$courseService->delete($course)) {
+            return new JsonResponse(
+                ['error' => 'Course with lessons cannot be deleted'],
+                JsonResponse::HTTP_CONFLICT,
+            );
+        }
 
         return new JsonResponse([
             'message' => 'Course deleted',
@@ -86,17 +89,16 @@ final class CourseController
         }
 
         return new JsonResponse(
-        $this->courseToArray($course),
+            $this->courseToArray($course),
         );
     }
-    
+
     #[Route('/api/courses/{id}', name: 'api_course_update', methods: ['PATCH'])]
     public function update(
         int $id,
-        Request $request,
+        #[MapRequestPayload] UpdateCourseInput $input,
         CourseRepository $courseRepository,
-        EntityManagerInterface $entityManager,
-        ValidatorInterface $validator,
+        CourseService $courseService,
     ): JsonResponse {
         $course = $courseRepository->find($id);
 
@@ -107,34 +109,7 @@ final class CourseController
             );
         }
 
-        $data = $request->toArray();
-        $title = $data['title'] ?? null;
-
-        if (!is_string($title)) {
-            return new JsonResponse(
-                ['errors' => ['Title must be a string']],
-                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        $course->setTitle(trim($title));
-
-        $violations = $validator->validate($course);
-
-        if (count($violations) > 0) {
-            $errors = [];
-
-            foreach ($violations as $violation) {
-                $errors[] = $violation->getMessage();
-            }
-
-            return new JsonResponse(
-                ['errors' => $errors],
-                JsonResponse::HTTP_UNPROCESSABLE_ENTITY,
-            );
-        }
-
-        $entityManager->flush();
+        $course = $courseService->update($course, $input);
 
         return new JsonResponse(
             $this->courseToArray($course),
