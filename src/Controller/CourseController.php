@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Dto\CreateCourseInput;
+use App\Service\CourseService;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -36,13 +37,9 @@ final class CourseController
     #[Route('/api/courses', name: 'api_course_create', methods: ['POST'])]
     public function create(
         #[MapRequestPayload] CreateCourseInput $input,
-        EntityManagerInterface $entityManager,
+        CourseService $courseService,
     ): JsonResponse {
-        $course = new Course();
-        $course->setTitle(trim($input->title));
-
-        $entityManager->persist($course);
-        $entityManager->flush();
+        $course = $courseService->create($input);
 
         return new JsonResponse(
             $this->courseToArray($course),
