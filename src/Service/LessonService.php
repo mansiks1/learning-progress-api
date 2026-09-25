@@ -48,4 +48,10 @@ final readonly class LessonService
 
         return $lesson;
     }
+
+    public function delete(Lesson $lesson): void
+    {
+        $this->entityManager->remove($lesson);
+        $this->entityManager->flush();
+    }
 }

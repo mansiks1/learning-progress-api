@@ -10,7 +10,6 @@ use App\Entity\Lesson;
 use App\Repository\CourseRepository;
 use App\Repository\LessonRepository;
 use App\Service\LessonService;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
@@ -138,7 +137,7 @@ final class LessonController
     public function delete(
         int $id,
         LessonRepository $lessonRepository,
-        EntityManagerInterface $entityManager,
+        LessonService $lessonService,
     ): JsonResponse {
         $lesson = $lessonRepository->find($id);
 
@@ -149,8 +148,7 @@ final class LessonController
             );
         }
 
-        $entityManager->remove($lesson);
-        $entityManager->flush();
+        $lessonService->delete($lesson);
 
         return new JsonResponse([
             'message' => 'Lesson deleted',
